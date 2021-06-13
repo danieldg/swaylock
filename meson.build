@@ -88,6 +88,7 @@ client_protocols = [
 	[wl_protocol_dir, 'unstable/xdg-output/xdg-output-unstable-v1.xml'],
 	['wlr-layer-shell-unstable-v1.xml'],
 	['wlr-input-inhibitor-unstable-v1.xml'],
+	['wp-screenlocker-unstable-v1.xml'],
 ]
 
 foreach p : client_protocols

@@ -23,6 +23,7 @@
 #include "pool-buffer.h"
 #include "seat.h"
 #include "swaylock.h"
+#include "wp-screenlocker-unstable-v1-client-protocol.h"
 #include "wlr-input-inhibitor-unstable-v1-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
@@ -344,6 +345,11 @@ static void handle_global(void *data, struct wl_registry *registry,
 			create_layer_surface(surface);
 			wl_display_roundtrip(state->display);
 		}
+	} else if (strcmp(interface, zwp_screenlocker_v1_interface.name) == 0) {
+		state->locker = wl_registry_bind(
+			registry, name, &zwp_screenlocker_v1_interface, 1);
+		state->locker_lock = zwp_screenlocker_v1_lock(state->locker);
+		zwp_screenlocker_lock_v1_set_persistent(state->locker_lock);
 	}
 }
 
@@ -1086,6 +1092,11 @@ static void display_in(int fd, short mask, void *data) {
 
 static void comm_in(int fd, short mask, void *data) {
 	if (read_comm_reply()) {
+		if (state.locker_lock) {
+			zwp_screenlocker_lock_v1_unlock(state.locker_lock);
+			// ensure compositor sees this immediately
+			wl_display_roundtrip(state.display);
+		}
 		// Authentication succeeded
 		state.run_display = false;
 	} else {
