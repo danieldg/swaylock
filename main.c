@@ -303,6 +303,34 @@ struct zxdg_output_v1_listener _xdg_output_listener = {
 	.description = handle_xdg_output_description,
 };
 
+static void locker_meh(void *data, struct zwp_screenlocker_v1 *zwp_screenlocker_v1) {
+}
+
+struct zwp_screenlocker_v1_listener locker_listener = {
+	.locked = locker_meh,
+	.unlocked = locker_meh,
+	.lock_abandoned = locker_meh,
+};
+
+static void locker_reject(void *data, struct zwp_screenlocker_lock_v1 *zwp_screenlocker_lock_v1, const char *reason) {
+	swaylock_log(LOG_ERROR, "Exiting - screenlock request rejected: %s", reason);
+	exit(2);
+}
+
+static void locker_ready(void *data, struct zwp_screenlocker_lock_v1 *zwp_screenlocker_lock_v1) {
+	struct swaylock_state *state = data;
+	swaylock_log(LOG_INFO, "Screen is now locked");
+	if (state->args.daemonize) {
+		state->args.daemonize = false;
+		daemonize();
+	}
+}
+
+struct zwp_screenlocker_lock_v1_listener locker_lock_listener = {
+	.rejected = locker_reject,
+	.locked = locker_ready,
+};
+
 static void handle_global(void *data, struct wl_registry *registry,
 		uint32_t name, const char *interface, uint32_t version) {
 	struct swaylock_state *state = data;
@@ -348,8 +376,7 @@ static void handle_global(void *data, struct wl_registry *registry,
 	} else if (strcmp(interface, zwp_screenlocker_v1_interface.name) == 0) {
 		state->locker = wl_registry_bind(
 			registry, name, &zwp_screenlocker_v1_interface, 1);
-		state->locker_lock = zwp_screenlocker_v1_lock(state->locker);
-		zwp_screenlocker_lock_v1_set_persistent(state->locker_lock);
+		zwp_screenlocker_v1_add_listener(state->locker, &locker_listener, NULL);
 	}
 }
 
@@ -1094,6 +1121,8 @@ static void comm_in(int fd, short mask, void *data) {
 	if (read_comm_reply()) {
 		if (state.locker_lock) {
 			zwp_screenlocker_lock_v1_unlock(state.locker_lock);
+			zwp_screenlocker_lock_v1_destroy(state.locker_lock);
+			zwp_screenlocker_v1_destroy(state.locker);
 			// ensure compositor sees this immediately
 			wl_display_roundtrip(state.display);
 		}
@@ -1194,19 +1223,25 @@ int main(int argc, char **argv) {
 	wl_registry_add_listener(registry, &registry_listener, &state);
 	wl_display_roundtrip(state.display);
 	assert(state.compositor && state.layer_shell && state.shm);
-	if (!state.input_inhibit_manager) {
+	if (!state.input_inhibit_manager && !state.locker) {
 		free(state.args.font);
 		swaylock_log(LOG_ERROR, "Compositor does not support the input "
 				"inhibitor protocol, refusing to run insecurely");
 		return 1;
 	}
 
-	zwlr_input_inhibit_manager_v1_get_inhibitor(state.input_inhibit_manager);
-	if (wl_display_roundtrip(state.display) == -1) {
-		free(state.args.font);
-		swaylock_log(LOG_ERROR, "Exiting - failed to inhibit input:"
-				" is another lockscreen already running?");
-		return 2;
+	if (state.locker) {
+		state.locker_lock = zwp_screenlocker_v1_lock(state.locker);
+		zwp_screenlocker_lock_v1_set_persistent(state.locker_lock);
+		zwp_screenlocker_lock_v1_add_listener(state.locker_lock, &locker_lock_listener, &state);
+	} else {
+		zwlr_input_inhibit_manager_v1_get_inhibitor(state.input_inhibit_manager);
+		if (wl_display_roundtrip(state.display) == -1) {
+			free(state.args.font);
+			swaylock_log(LOG_ERROR, "Exiting - failed to inhibit input:"
+					" is another lockscreen already running?");
+			return 2;
+		}
 	}
 
 	if (state.zxdg_output_manager) {
@@ -1228,7 +1263,8 @@ int main(int argc, char **argv) {
 		create_layer_surface(surface);
 	}
 
-	if (state.args.daemonize) {
+	if (state.args.daemonize && !state.locker) {
+		// if locker is used, delay the daemonize call until we get confirmation of lock
 		wl_display_roundtrip(state.display);
 		daemonize();
 	}
