@@ -152,6 +152,11 @@ static void create_layer_surface(struct swaylock_surface *surface) {
 	zwlr_layer_surface_v1_add_listener(surface->layer_surface,
 			&layer_surface_listener, surface);
 
+	if (state->locker) {
+		surface->locker_vis = zwp_screenlocker_v1_get_visibility(state->locker, surface->surface);
+		zwp_screenlocker_visibility_v1_set_visibility(surface->locker_vis, ZWP_SCREENLOCKER_VISIBILITY_V1_VISIBILITY_LOCK_ONLY);
+	}
+
 	if (surface_is_opaque(surface) &&
 			surface->state->args.mode != BACKGROUND_MODE_CENTER &&
 			surface->state->args.mode != BACKGROUND_MODE_FIT) {

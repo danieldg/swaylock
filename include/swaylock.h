@@ -103,6 +103,7 @@ struct swaylock_surface {
 	struct wl_surface *child; // surface made into subsurface
 	struct wl_subsurface *subsurface;
 	struct zwlr_layer_surface_v1 *layer_surface;
+	struct zwp_screenlocker_visibility_v1 *locker_vis;
 	struct pool_buffer buffers[2];
 	struct pool_buffer indicator_buffers[2];
 	struct pool_buffer *current_buffer;
