@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <protocol name="zwp_screenlocker_v1">
+  <copyright>
+    Copyright © 2021 Daniel De Graaf
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice (including the next
+    paragraph) shall be included in all copies or substantial portions of the
+    Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+  </copyright>
+
   <interface name="zwp_screenlocker_v1" version="1">
     <description summary="Screen locking manager">
-      This interface provides notification of screen lock/unlock events and
-      (if supported) acting as a screenlocker.
-
-      This is a privileged protocol; clients do not need access to this
-      protocol if they only want to display windows on the locked desktop.
+      This interface provides notification of screen lock/unlock events,
+      displaying windows on a locked screen, and acting as a screenlocker.
     </description>
 
     <request name="destroy" type="destructor">
@@ -41,6 +61,9 @@
 
         A new screen-locker should be started as soon as possible in order to
         allow the user to unlock the session.
+
+        If a compositor does not support external lockers, this event will never
+        be sent.
       </description>
     </event>
 
@@ -77,6 +100,9 @@
     <event name="rejected">
       <description summary="The compositor has rejected the request">
         This object is inert and should be destroyed.  
+
+        If a compositor does not support external lockers, this event will always
+        be sent on the creation of a lock object.
 
         TODO: should the reason be an enum?  Possible values: permission_denied, locker_exists.
       </description>
