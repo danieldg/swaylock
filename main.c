@@ -135,9 +135,15 @@ static void create_layer_surface(struct swaylock_surface *surface) {
 	assert(surface->subsurface);
 	wl_subsurface_set_sync(surface->subsurface);
 
+	enum zwlr_layer_shell_v1_layer layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
+	// XXX: we won't get keyboard focus if we are BACKGROUND or BOTTOM
+	// see sway/desktop/layer_shell.c layers_above_shell
+	if (state->locker)
+		layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
+
 	surface->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
 			state->layer_shell, surface->surface, surface->output,
-			ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "lockscreen");
+			layer, "lockscreen");
 	assert(surface->layer_surface);
 
 	zwlr_layer_surface_v1_set_size(surface->layer_surface, 0, 0);
@@ -153,8 +159,11 @@ static void create_layer_surface(struct swaylock_surface *surface) {
 			&layer_surface_listener, surface);
 
 	if (state->locker) {
-		surface->locker_vis = zwp_screenlocker_v1_get_visibility(state->locker, surface->surface);
-		zwp_screenlocker_visibility_v1_set_visibility(surface->locker_vis, ZWP_SCREENLOCKER_VISIBILITY_V1_VISIBILITY_LOCK_ONLY);
+		struct zwp_screenlocker_visibility_v1 *vis;
+		vis = zwp_screenlocker_v1_get_visibility(state->locker, surface->surface);
+		zwp_screenlocker_visibility_v1_set_visibility(vis, ZWP_SCREENLOCKER_VISIBILITY_V1_VISIBILITY_LOCK_ONLY);
+		vis = zwp_screenlocker_v1_get_visibility(state->locker, surface->child);
+		zwp_screenlocker_visibility_v1_set_visibility(vis, ZWP_SCREENLOCKER_VISIBILITY_V1_VISIBILITY_BOTH);
 	}
 
 	if (surface_is_opaque(surface) &&
