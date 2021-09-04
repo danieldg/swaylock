@@ -323,7 +323,6 @@ static void locker_meh(void *data, struct zwp_screenlocker_v1 *zwp_screenlocker_
 struct zwp_screenlocker_v1_listener locker_listener = {
 	.locked = locker_meh,
 	.unlocked = locker_meh,
-	.lock_abandoned = locker_meh,
 };
 
 static void locker_reject(void *data, struct zwp_screenlocker_lock_v1 *zwp_screenlocker_lock_v1, const char *reason) {
@@ -1246,7 +1245,6 @@ int main(int argc, char **argv) {
 
 	if (state.locker) {
 		state.locker_lock = zwp_screenlocker_v1_lock(state.locker);
-		zwp_screenlocker_lock_v1_set_persistent(state.locker_lock);
 		zwp_screenlocker_lock_v1_add_listener(state.locker_lock, &locker_lock_listener, &state);
 	} else {
 		zwlr_input_inhibit_manager_v1_get_inhibitor(state.input_inhibit_manager);
